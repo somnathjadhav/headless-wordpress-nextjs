@@ -1,0 +1,27 @@
+# General
+.DS_Store
+.env
+.env.*
+*.log
+logs/
+
+# Node / JS
+node_modules/
+dist/
+build/
+.npm/
+.pnpm-store/
+.parcel-cache/
+.next/
+.nuxt/
+.storybook/
+coverage/
+.vscode/
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon?
+
+# Others
+.qodo/
