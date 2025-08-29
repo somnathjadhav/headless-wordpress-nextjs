@@ -1,0 +1,96 @@
+{
+  "name": "cursor-chat-highlighter",
+  "displayName": "Cursor Chat Highlighter",
+  "description": "Highlights your own messages in Cursor chat with different background colors",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "chatHighlighter.toggleHighlighting",
+        "title": "Toggle Chat Message Highlighting",
+        "category": "Chat Highlighter"
+      },
+      {
+        "command": "chatHighlighter.changeUserColor",
+        "title": "Change User Message Color",
+        "category": "Chat Highlighter"
+      },
+      {
+        "command": "chatHighlighter.changeAIColor",
+        "title": "Change AI Message Color",
+        "category": "Chat Highlighter"
+      },
+      {
+        "command": "chatHighlighter.openHighlightedChat",
+        "title": "Open Highlighted Chat Interface",
+        "category": "Chat Highlighter"
+      }
+    ],
+    "configuration": {
+      "title": "Cursor Chat Highlighter",
+      "properties": {
+        "chatHighlighter.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable chat message highlighting"
+        },
+        "chatHighlighter.userMessageBackground": {
+          "type": "string",
+          "default": "#e3f2fd",
+          "description": "Background color for user messages"
+        },
+        "chatHighlighter.userMessageBorder": {
+          "type": "string",
+          "default": "#2196f3",
+          "description": "Border color for user messages"
+        },
+        "chatHighlighter.aiMessageBackground": {
+          "type": "string",
+          "default": "#f3e5f5",
+          "description": "Background color for AI messages"
+        },
+        "chatHighlighter.aiMessageBorder": {
+          "type": "string",
+          "default": "#9c27b0",
+          "description": "Border color for AI messages"
+        },
+        "chatHighlighter.borderRadius": {
+          "type": "string",
+          "default": "8px",
+          "description": "Border radius for message containers"
+        },
+        "chatHighlighter.padding": {
+          "type": "string",
+          "default": "12px",
+          "description": "Padding for message containers"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

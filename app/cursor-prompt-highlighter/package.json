@@ -1,0 +1,87 @@
+{
+  "name": "cursor-prompt-highlighter",
+  "displayName": "Prompt Highlighter",
+  "description": "A Cursor extension that highlights given prompts in your code",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "promptHighlighter.highlightPrompt",
+        "title": "Highlight Prompt",
+        "category": "Prompt Highlighter"
+      },
+      {
+        "command": "promptHighlighter.clearHighlights",
+        "title": "Clear All Highlights",
+        "category": "Prompt Highlighter"
+      },
+      {
+        "command": "promptHighlighter.addPrompt",
+        "title": "Add New Prompt to Highlight",
+        "category": "Prompt Highlighter"
+      }
+    ],
+    "configuration": {
+      "title": "Prompt Highlighter",
+      "properties": {
+        "promptHighlighter.prompts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "TODO:",
+            "FIXME:",
+            "NOTE:",
+            "HACK:",
+            "BUG:",
+            "PROMPT:"
+          ],
+          "description": "List of prompts to highlight"
+        },
+        "promptHighlighter.highlightColor": {
+          "type": "string",
+          "default": "#ff6b6b",
+          "description": "Color for highlighting prompts"
+        },
+        "promptHighlighter.backgroundColor": {
+          "type": "string",
+          "default": "#ffeb3b",
+          "description": "Background color for highlighting prompts"
+        },
+        "promptHighlighter.fontWeight": {
+          "type": "string",
+          "enum": ["normal", "bold"],
+          "default": "bold",
+          "description": "Font weight for highlighted prompts"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,7 +1,14 @@
+const { withFaust } = require('@faustwp/core');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Performance optimizations
   compress: true,
+  
+  // Performance optimizations (removed experimental features that were causing issues)
+  
+  // Power by header
+  poweredByHeader: false,
 
   // Image optimization
   images: {
@@ -63,6 +70,17 @@ const nextConfig = {
     ];
   },
 
+  // Redirects
+  async redirects() {
+    return [
+      {
+        source: '/contact-us',
+        destination: '/contact',
+        permanent: false,
+      },
+    ];
+  },
+
   // Output configuration
   outputFileTracingRoot: process.cwd(),
   
@@ -72,4 +90,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withFaust(nextConfig);

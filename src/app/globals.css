@@ -2,18 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import Inter from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14,100..900;1,14,100..900&display=swap');
+/* Import Wix Madefor Display from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Wix+Madefor+Display:ital,wght@0,400..800;1,400..800&display=swap');
 
 /* Default font variables */
 :root {
-  --font-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading: 'Wix Madefor Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Wix Madefor Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-weight-heading: 700;
   --font-weight-body: 400;
 }
 
 /* Apply fonts globally */
+* {
+  font-family: var(--font-body);
+}
+
 html {
   font-family: var(--font-body);
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -32,6 +36,11 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: var(--font-weight-heading);
   line-height: 1.2;
   transition: color 0.3s ease;
+}
+
+/* Ensure all text elements use the font */
+p, span, div, a, button, input, textarea, label, li, td, th, strong, em, b, i {
+  font-family: var(--font-body);
 }
 
 /* Line clamp utilities */

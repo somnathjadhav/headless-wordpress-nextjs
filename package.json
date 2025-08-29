@@ -13,6 +13,10 @@
     "monitor-css": "node file-monitor.js"
   },
   "dependencies": {
+    "@apollo/client": "^3.14.0",
+    "@faustwp/cli": "^3.2.5",
+    "@faustwp/core": "^3.2.4",
+    "@wordpress/block-serialization-default-parser": "^5.29.0",
     "graphql": "^16.8.0",
     "next": "^15.5.0",
     "react": "^19.1.1",

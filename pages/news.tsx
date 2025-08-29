@@ -1,178 +1,267 @@
-import React from 'react';
-import { GetStaticProps } from 'next';
-import Link from 'next/link';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import Layout from '../src/components/Layout';
-import { fetchPosts, fetchCategories, fetchTags, fetchAuthors, fetchArchives } from '../src/lib/wordpress';
+import SEO from '../src/components/SEO';
 
 interface Post {
-  id: number;
-  title: { rendered: string };
-  excerpt: { rendered: string };
-  date: string;
+  id: string;
+  title: string;
+  excerpt: string;
   slug: string;
-  author: number;
-  featured_media: number;
-  _embedded?: {
-    author?: Array<{
+  date: string;
+  featuredImage?: {
+    node: {
+      sourceUrl: string;
+      altText: string;
+    };
+  };
+  author?: {
+    node: {
       name: string;
-      slug: string;
-      avatar_urls: { [key: string]: string };
-    }>;
-    'wp:featuredmedia'?: Array<{
-      source_url: string;
-      alt_text: string;
-    }>;
-    'wp:term'?: Array<Array<{
-      id: number;
-      name: string;
-      slug: string;
-      taxonomy: string;
-    }>>;
+    };
   };
 }
 
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-  count: number;
-}
+export default function NewsPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-interface Tag {
-  id: number;
-  name: string;
-  slug: string;
-  count: number;
-}
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        console.log('Fetching posts from API route...');
+        
+        const response = await fetch('/api/posts', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-interface Author {
-  id: number;
-  name: string;
-  slug: string;
-  avatar_urls: { [key: string]: string };
-}
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
 
-interface Archive {
-  date: string;
-  count: number;
-}
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-interface NewsProps {
-  posts: Post[];
-  categories: Category[];
-  tags: Tag[];
-  authors: Author[];
-  archives: Archive[];
-}
+        const result = await response.json();
+        console.log('API response:', result);
+        
+        if (result.error) {
+          throw new Error(result.error);
+        }
 
-const News: React.FC<NewsProps> = ({ posts }) => {
+        const fetchedPosts = result.posts?.nodes || [];
+        console.log('Posts fetched:', fetchedPosts.length);
+        setPosts(fetchedPosts);
+      } catch (err) {
+        console.error('Error fetching posts:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch posts');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    // Use a consistent format to avoid hydration mismatches
     const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
-
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+    const month = date.toLocaleString('en-US', { month: 'long' });
+    const day = date.getDate();
+    return `${month} ${day}, ${year}`;
   };
 
   return (
-    <Layout title="News" description="Latest news and blog posts from Accounto.">
-      <section className="py-12 md:py-20 bg-white dark:bg-gray-900 transition-colors duration-300">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-heading font-bold text-center mb-10 text-gray-900 dark:text-white transition-colors duration-300">
-            Latest News
-          </h1>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.map((post) => {
-              const author = post._embedded?.author?.[0];
-              const featuredMedia = post._embedded?.['wp:featuredmedia']?.[0];
-              const categories = post._embedded?.['wp:term']?.find(term => term[0]?.taxonomy === 'category') || [];
-
-              return (
-                <div key={post.id} className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 shadow-sm hover:shadow-md">
-                  {featuredMedia?.source_url ? (
-                    <div className="relative w-full h-48">
-                      <Image
-                        src={featuredMedia.source_url}
-                        alt={featuredMedia.alt_text || post.title.rendered}
-                        fill
-                        className="rounded-t-lg object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 rounded-t-lg">
-                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                      </svg>
-                    </div>
-                  )}
-                  <div className="p-6">
-                    <h3 className="text-xl font-heading font-semibold text-gray-900 dark:text-white mb-2 h-14 line-clamp-2 transition-colors duration-300">
-                      <Link href={`/posts/${post.slug}`} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
-                        {truncateText(post.title.rendered, 80)}
-                      </Link>
-                    </h3>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex flex-wrap gap-x-3 transition-colors duration-300">
-                      {author && (
-                        <Link href={`/authors/${author.slug}`} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
-                          By {author.name}
-                        </Link>
-                      )}
-                      {categories.length > 0 && (
-                        <>
-                          <span className="mx-1">|</span>
-                          <Link href={`/categories/${categories[0].slug}`} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
-                            {categories[0].name}
-                          </Link>
-                        </>
-                      )}
-                      <span className="mx-1">|</span>
-                      <span>{formatDate(post.date)}</span>
-                    </div>
-                    <div
-                      className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-3 transition-colors duration-300"
-                      dangerouslySetInnerHTML={{ __html: truncateText(post.excerpt.rendered.replace(/<[^>]*>?/gm, ''), 150) }}
-                    />
-                    <Link href={`/posts/${post.slug}`} className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-200">
-                      Read More
-                      <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                      </svg>
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
+    <Layout>
+      <SEO
+        title="News & Blog Posts"
+        description="Stay updated with our latest news, insights, and blog posts. Discover valuable content and industry updates."
+        ogImage="/og-image.jpg"
+      />
+      
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">News & Blog Posts</h1>
+            <p className="text-xl text-blue-100 max-w-3xl mx-auto">
+              Stay updated with our latest insights, industry news, and valuable content
+            </p>
           </div>
+        </div>
+      </section>
+
+      {/* Posts Grid Section */}
+      <section className="py-16 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="max-w-md mx-auto">
+                <div className="w-24 h-24 bg-blue-200 dark:bg-blue-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-12 h-12 text-blue-600 dark:text-blue-300 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Loading Posts...</h3>
+                <p className="text-gray-600 dark:text-gray-300">Fetching the latest blog posts from WordPress</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="max-w-md mx-auto">
+                <div className="w-24 h-24 bg-red-200 dark:bg-red-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-12 h-12 text-red-600 dark:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error Loading Posts</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : posts.length > 0 ? (
+            <>
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                  Latest Articles ({posts.length})
+                </h2>
+                <p className="text-lg text-gray-600 dark:text-gray-300">
+                  Discover our latest blog posts and insights
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {posts.map((post) => (
+                  <article
+                    key={post.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
+                  >
+                    {/* Featured Image */}
+                    {post.featuredImage?.node?.sourceUrl && (
+                      <div className="aspect-w-16 aspect-h-9">
+                        <img
+                          src={post.featuredImage.node.sourceUrl}
+                          alt={post.featuredImage.node.altText || post.title}
+                          className="w-full h-48 object-cover"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Content */}
+                    <div className="p-6">
+                      {/* Meta Info */}
+                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                        <time dateTime={post.date}>
+                          {formatDate(post.date)}
+                        </time>
+                        {post.author?.node?.name && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>{post.author.node.name}</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* Title */}
+                      <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-3 line-clamp-2">
+                        {post.title}
+                      </h3>
+                      
+                      {/* Excerpt */}
+                      <div
+                        className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3 text-base"
+                        dangerouslySetInnerHTML={{ __html: post.excerpt }}
+                      />
+                      
+                      {/* Read More Link */}
+                      <a
+                        href={`/posts/${post.slug}`}
+                        className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors"
+                      >
+                        Read More
+                        <svg
+                          className="ml-2 w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              
+              {/* Load More Button */}
+              <div className="text-center mt-12">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+                  Load More Posts
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <div className="max-w-md mx-auto">
+                <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg
+                    className="w-12 h-12 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  No Posts Found
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  No blog posts have been published yet. Check back soon for updates!
+                </p>
+                <a
+                  href="/"
+                  className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                >
+                  <svg
+                    className="mr-2 w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
+                  </svg>
+                  Back to Home
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </Layout>
   );
-};
-
-export const getStaticProps: GetStaticProps<NewsProps> = async () => {
-  const posts = await fetchPosts();
-  const categories = await fetchCategories();
-  const tags = await fetchTags();
-  const authors = await fetchAuthors();
-  const archives = await fetchArchives();
-
-  return {
-    props: {
-      posts,
-      categories,
-      tags,
-      authors,
-      archives,
-    },
-    revalidate: 60, // Regenerate page every 60 seconds
-  };
-};
-
-export default News;
+}

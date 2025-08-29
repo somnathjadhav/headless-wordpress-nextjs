@@ -1,255 +1,183 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface MenuItem {
-  id: number;
-  title: string;
+  id: string;
+  label: string;
   url: string;
-  target: string;
-  classes: string[];
-  menu_item_parent: string;
-  order: number;
-  children?: MenuItem[];
+  path: string;
+  parentId: string | null;
+  childItems?: {
+    nodes: MenuItem[];
+  };
 }
 
 interface MenuData {
-  items: MenuItem[];
-  menu_id: number;
-  menu_name: string;
+  menu: {
+    id: string;
+    name: string;
+    menuItems: {
+      nodes: MenuItem[];
+    };
+  };
 }
 
 interface WordPressMenuProps {
   className?: string;
-  isMobile?: boolean;
+  onItemClick?: () => void;
 }
 
-// Direct API call function
-async function fetchPrimaryMenu(): Promise<MenuData> {
-  try {
-    const WORDPRESS_API_URL = process.env.NEXT_PUBLIC_WORDPRESS_API_URL || 'http://localhost:10013';
-    const response = await fetch(`${WORDPRESS_API_URL}/wp-json/wp/v2/primary-menu`, {
-      signal: AbortSignal.timeout(1000)
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data;
-    }
-  } catch (error) {
-    // Use default menu items if fetch fails
-  }
-
-  // Return default menu items if fetch fails
-  return {
-    items: [
-      {
-        id: 1,
-        title: 'Home',
-        url: '/',
-        target: '',
-        classes: [],
-        menu_item_parent: '0',
-        order: 1,
-      },
-      {
-        id: 2,
-        title: 'Company',
-        url: '/company',
-        target: '',
-        classes: [],
-        menu_item_parent: '0',
-        order: 2,
-      },
-      {
-        id: 3,
-        title: 'Services',
-        url: '/services',
-        target: '',
-        classes: [],
-        menu_item_parent: '0',
-        order: 3,
-        children: [
-          {
-            id: 4,
-            title: 'Corporate Finance',
-            url: '/services#corporate-finance',
-            target: '',
-            classes: [],
-            menu_item_parent: '3',
-            order: 1,
-          },
-          {
-            id: 5,
-            title: 'Financial Services',
-            url: '/services#financial-services',
-            target: '',
-            classes: [],
-            menu_item_parent: '3',
-            order: 2,
-          },
-        ],
-      },
-      {
-        id: 6,
-        title: 'Process',
-        url: '/process',
-        target: '',
-        classes: [],
-        menu_item_parent: '0',
-        order: 4,
-      },
-      {
-        id: 7,
-        title: 'News',
-        url: '/news',
-        target: '',
-        classes: [],
-        menu_item_parent: '0',
-        order: 5,
-      },
-      {
-        id: 8,
-        title: 'Contact Us',
-        url: '/contact',
-        target: '',
-        classes: [],
-        menu_item_parent: '0',
-        order: 6,
-      },
-    ],
-    menu_id: 0,
-    menu_name: 'Default Menu',
-  };
-}
-
-export default function WordPressMenu({ className = '', isMobile = false }: WordPressMenuProps) {
+export default function WordPressMenu({ className = '', onItemClick }: WordPressMenuProps) {
   const [menuData, setMenuData] = useState<MenuData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadMenu = async () => {
+    const fetchMenu = async () => {
       try {
-        const data = await fetchPrimaryMenu();
-        setMenuData(data);
-      } catch (error) {
-        console.error('Error loading menu:', error);
+        setLoading(true);
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch('/api/menu', {
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setMenuData(result);
+      } catch (err) {
+        console.error('Error fetching menu:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch menu');
       } finally {
         setLoading(false);
       }
     };
 
-    loadMenu();
+    fetchMenu();
   }, []);
 
-  if (loading) {
-    return (
-      <div className={`flex space-x-8 ${className}`}>
-        <div className="animate-pulse bg-gray-200 dark:bg-gray-600 h-4 w-16 rounded"></div>
-        <div className="animate-pulse bg-gray-200 dark:bg-gray-600 h-4 w-20 rounded"></div>
-        <div className="animate-pulse bg-gray-200 dark:bg-gray-600 h-4 w-16 rounded"></div>
-      </div>
-    );
-  }
-
-  if (!menuData) {
-    return null;
-  }
-
   const renderMenuItem = (item: MenuItem) => {
-    const hasChildren = item.children && item.children.length > 0;
+    const hasChildren = item.childItems && item.childItems.nodes.length > 0;
+    const isMobile = className.includes('flex-col');
     
-    return (
-      <div
-        key={item.id}
-        className="relative"
-        onMouseEnter={() => setHoveredItem(item.id)}
-        onMouseLeave={() => setHoveredItem(null)}
-      >
-        <Link
-          href={item.url}
-          target={item.target}
-          className={`block px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-            isMobile
-              ? 'text-gray-700 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-400'
-              : 'text-gray-700 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-400'
-          }`}
-        >
-          {item.title}
-          {hasChildren && (
-            <svg
-              className="ml-1 inline-block w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          )}
-        </Link>
+    // Convert WordPress URL to Next.js path
+    const getPath = (url: string) => {
+      if (!url) return '/';
+      
+      try {
+        const urlObj = new URL(url);
+        const path = urlObj.pathname;
+        
+        // Handle WordPress URLs and convert to Next.js paths
+        if (path === '' || path === '/') {
+          return '/';
+        }
+        
+        // Remove trailing slash for consistency
+        return path.endsWith('/') ? path.slice(0, -1) : path;
+      } catch {
+        return '/';
+      }
+    };
 
-        {/* Dropdown Menu */}
-        {hasChildren && hoveredItem === item.id && (
-          <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50">
-            <div className="py-1" role="menu">
-              {item.children!.map((child) => (
+    const path = getPath(item.url);
+
+    return (
+      <li key={item.id} className={isMobile ? '' : 'relative group'}>
+        <Link
+          href={path}
+          className={`text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-base ${
+            isMobile 
+              ? 'block font-medium' 
+              : 'px-3 py-2 rounded-md font-medium'
+          }`}
+          onClick={onItemClick}
+        >
+          {item.label}
+        </Link>
+        
+        {hasChildren && !isMobile && (
+          <ul className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-200 dark:border-gray-700">
+            {item.childItems!.nodes.map((childItem) => (
+              <li key={childItem.id}>
                 <Link
-                  key={child.id}
-                  href={child.url}
-                  target={child.target}
-                  className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                  role="menuitem"
+                  href={getPath(childItem.url)}
+                  className="block px-4 py-2 text-base text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  onClick={onItemClick}
                 >
-                  {child.title}
+                  {childItem.label}
                 </Link>
-              ))}
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+        
+        {hasChildren && isMobile && (
+          <ul className="ml-4 mt-2 space-y-2">
+            {item.childItems!.nodes.map((childItem) => (
+              <li key={childItem.id}>
+                <Link
+                  href={getPath(childItem.url)}
+                  className="block text-base text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  onClick={onItemClick}
+                >
+                  {childItem.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </li>
     );
   };
 
-  if (isMobile) {
+  if (loading) {
     return (
-      <div className="space-y-1">
-        {menuData.items.map((item) => (
-          <div key={item.id}>
-            <Link
-              href={item.url}
-              target={item.target}
-              className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-400 transition-colors duration-200"
-            >
-              {item.title}
+      <nav className={className}>
+        <ul className={className.includes('flex-col') ? 'space-y-4' : 'flex space-x-8'}>
+          <li className="text-gray-400 dark:text-gray-500">Loading menu...</li>
+        </ul>
+      </nav>
+    );
+  }
+
+  if (error || !menuData?.menu?.menuItems?.nodes) {
+    return (
+      <nav className={className}>
+        <ul className={className.includes('flex-col') ? 'space-y-4' : 'flex space-x-8'}>
+          <li>
+            <Link href="/" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-base">
+              Home
             </Link>
-            {item.children && item.children.length > 0 && (
-              <div className="ml-4 mt-1 space-y-1">
-                {item.children.map((child) => (
-                  <Link
-                    key={child.id}
-                    href={child.url}
-                    target={child.target}
-                    className="block px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400 transition-colors duration-200"
-                  >
-                    {child.title}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+          </li>
+          <li>
+            <Link href="/news" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-base">
+              News
+            </Link>
+          </li>
+          <li>
+            <Link href="/contact" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-base">
+              Contact
+            </Link>
+          </li>
+        </ul>
+      </nav>
     );
   }
 
   return (
-    <nav className={`flex space-x-8 ${className}`}>
-      {menuData.items.map(renderMenuItem)}
+    <nav className={className}>
+      <ul className={className.includes('flex-col') ? 'space-y-4' : 'flex space-x-8'}>
+        {menuData.menu.menuItems.nodes.map(renderMenuItem)}
+      </ul>
     </nav>
   );
 }

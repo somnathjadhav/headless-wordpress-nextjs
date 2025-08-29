@@ -1,0 +1,45 @@
+{
+  "name": "headless-wp-starter",
+  "version": "1.0.0",
+  "description": "A standardized headless WordPress starter package for rapid website development",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm start",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:frontend",
+    "clean": "rm -rf frontend/.next frontend/node_modules",
+    "setup": "npm run install:all && echo 'Setup complete! Run npm run dev to start development'",
+    "test": "cd frontend && npm test",
+    "lint": "cd frontend && npm run lint",
+    "type-check": "cd frontend && npm run type-check"
+  },
+  "keywords": [
+    "wordpress",
+    "headless",
+    "nextjs",
+    "react",
+    "typescript",
+    "acf",
+    "cms"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/headless-wp-starter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/headless-wp-starter/issues"
+  },
+  "homepage": "https://github.com/yourusername/headless-wp-starter#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
+
+
+
+
