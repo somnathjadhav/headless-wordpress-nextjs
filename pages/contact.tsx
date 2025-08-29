@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GetStaticProps } from 'next';
 import Layout from '../src/components/Layout';
-import { fetchContactData } from '../src/lib/wordpress';
+import { fetchContactData, submitContactForm } from '../src/lib/wordpress';
 
 interface ContactData {
   title: string;
@@ -27,6 +27,21 @@ interface ContactProps {
 }
 
 export default function Contact({ contactData }: ContactProps) {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    company: '',
+    service: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
+
   const formatBusinessHours = (hours: string) => {
     return hours.split('\n').map((line, index) => (
       <React.Fragment key={index}>
@@ -34,6 +49,53 @@ export default function Contact({ contactData }: ContactProps) {
         {index < hours.split('\n').length - 1 && <br />}
       </React.Fragment>
     ));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus({ type: null, message: '' });
+
+    try {
+      const result = await submitContactForm(formData);
+      
+      if (result.success) {
+        setSubmitStatus({
+          type: 'success',
+          message: result.data.message || 'Thank you for your message. We will get back to you soon!'
+        });
+        // Reset form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          company: '',
+          service: '',
+          message: ''
+        });
+      } else {
+        setSubmitStatus({
+          type: 'error',
+          message: result.error || 'Something went wrong. Please try again.'
+        });
+      }
+    } catch (error) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'An unexpected error occurred. Please try again.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -128,7 +190,19 @@ export default function Contact({ contactData }: ContactProps) {
             <div className="bg-white dark:bg-gray-700 rounded-lg shadow-lg p-8 border border-gray-200 dark:border-gray-600 transition-colors duration-300">
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 transition-colors duration-300">{contactData.form_title}</h3>
               <p className="text-gray-600 dark:text-gray-300 mb-6 transition-colors duration-300">{contactData.form_description}</p>
-              <form className="space-y-6">
+              
+              {/* Status Messages */}
+              {submitStatus.type && (
+                <div className={`p-4 rounded-lg mb-6 ${
+                  submitStatus.type === 'success' 
+                    ? 'bg-green-100 border border-green-400 text-green-700 dark:bg-green-900 dark:border-green-700 dark:text-green-300' 
+                    : 'bg-red-100 border border-red-400 text-red-700 dark:bg-red-900 dark:border-red-700 dark:text-red-300'
+                }`}>
+                  {submitStatus.message}
+                </div>
+              )}
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
@@ -138,6 +212,8 @@ export default function Contact({ contactData }: ContactProps) {
                       type="text"
                       id="firstName"
                       name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
                       required
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                     />
@@ -150,6 +226,8 @@ export default function Contact({ contactData }: ContactProps) {
                       type="text"
                       id="lastName"
                       name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
                       required
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                     />
@@ -164,6 +242,8 @@ export default function Contact({ contactData }: ContactProps) {
                     type="email"
                     id="email"
                     name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
                     required
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                   />
@@ -177,6 +257,8 @@ export default function Contact({ contactData }: ContactProps) {
                     type="tel"
                     id="phone"
                     name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                   />
                 </div>
@@ -189,6 +271,8 @@ export default function Contact({ contactData }: ContactProps) {
                     type="text"
                     id="company"
                     name="company"
+                    value={formData.company}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                   />
                 </div>
@@ -200,6 +284,8 @@ export default function Contact({ contactData }: ContactProps) {
                   <select
                     id="service"
                     name="service"
+                    value={formData.service}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                   >
                     <option value="">Select a service</option>
@@ -219,6 +305,8 @@ export default function Contact({ contactData }: ContactProps) {
                     id="message"
                     name="message"
                     rows={5}
+                    value={formData.message}
+                    onChange={handleInputChange}
                     required
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                     placeholder="Tell us about your needs..."
@@ -227,9 +315,14 @@ export default function Contact({ contactData }: ContactProps) {
 
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                  disabled={isSubmitting}
+                  className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors duration-200 ${
+                    isSubmitting
+                      ? 'bg-gray-400 cursor-not-allowed text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                 >
-                  Send Message
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
             </div>

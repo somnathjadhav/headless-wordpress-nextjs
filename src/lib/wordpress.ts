@@ -432,3 +432,35 @@ export async function fetchContactData() {
     ]
   };
 }
+
+// Contact form submission
+export async function submitContactForm(formData: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  service?: string;
+  message: string;
+}) {
+  try {
+    const response = await fetch(`${WORDPRESS_API_URL}/wp-json/wp/v2/contact-submission`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, data };
+    } else {
+      const errorData = await response.json();
+      return { success: false, error: errorData.message || 'Submission failed' };
+    }
+  } catch (error) {
+    console.log('Error submitting contact form:', (error as Error).message);
+    return { success: false, error: 'Network error occurred' };
+  }
+}

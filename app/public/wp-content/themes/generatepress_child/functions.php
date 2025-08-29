@@ -782,4 +782,332 @@ function add_dark_logo_to_api() {
 }
 add_action('rest_api_init', 'add_dark_logo_to_api');
 
+/**
+ * Contact Form API Endpoints
+ * Handle contact form submissions and data
+ */
+
+// Add REST API endpoint for contact data
+function register_contact_data_rest_api() {
+    register_rest_route('wp/v2', '/contact-data', array(
+        'methods' => 'GET',
+        'callback' => 'get_contact_data',
+        'permission_callback' => '__return_true',
+    ));
+}
+add_action('rest_api_init', 'register_contact_data_rest_api');
+
+function get_contact_data() {
+    return array(
+        'title' => get_theme_mod('contact_title', 'Contact Us'),
+        'subtitle' => get_theme_mod('contact_subtitle', 'Have questions, suggestions, or want to contribute? We\'d love to hear from you!'),
+        'description' => get_theme_mod('contact_description', "We're here to help you with any questions about our blog content or if you'd like to contribute."),
+        'address' => get_theme_mod('contact_address', 'Digital World'),
+        'phone' => get_theme_mod('contact_phone', '+1 234 567 8910'),
+        'email' => get_theme_mod('contact_email', 'hello@blog.com'),
+        'business_hours' => get_theme_mod('contact_business_hours', 'Monday - Friday: 9:00 AM - 6:00 PM\nSaturday: 10:00 AM - 2:00 PM'),
+        'map_embed' => get_theme_mod('contact_map_embed', ''),
+        'form_title' => get_theme_mod('contact_form_title', 'Send us a Message'),
+        'form_description' => get_theme_mod('contact_form_description', 'Fill out the form below and we\'ll get back to you as soon as possible.'),
+        'office_locations' => get_theme_mod('contact_office_locations', array(
+            array(
+                'name' => 'Main Office',
+                'address' => 'Digital World',
+                'phone' => '+1 234 567 8910',
+                'email' => 'hello@blog.com'
+            )
+        ))
+    );
+}
+
+// Add REST API endpoint for contact form submissions
+function register_contact_submission_rest_api() {
+    register_rest_route('wp/v2', '/contact-submission', array(
+        'methods' => 'POST',
+        'callback' => 'handle_contact_submission',
+        'permission_callback' => '__return_true',
+        'args' => array(
+            'firstName' => array(
+                'required' => true,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'lastName' => array(
+                'required' => true,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'email' => array(
+                'required' => true,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_email',
+            ),
+            'phone' => array(
+                'required' => false,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'company' => array(
+                'required' => false,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'service' => array(
+                'required' => false,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'message' => array(
+                'required' => true,
+                'type' => 'string',
+                'sanitize_callback' => 'sanitize_textarea_field',
+            ),
+        ),
+    ));
+}
+add_action('rest_api_init', 'register_contact_submission_rest_api');
+
+function handle_contact_submission($request) {
+    $params = $request->get_params();
+    
+    // Validate required fields
+    if (empty($params['firstName']) || empty($params['lastName']) || empty($params['email']) || empty($params['message'])) {
+        return new WP_Error('missing_fields', 'Required fields are missing', array('status' => 400));
+    }
+    
+    // Validate email
+    if (!is_email($params['email'])) {
+        return new WP_Error('invalid_email', 'Invalid email address', array('status' => 400));
+    }
+    
+    // Create post data for contact submission
+    $post_data = array(
+        'post_title' => 'Contact Form Submission - ' . $params['firstName'] . ' ' . $params['lastName'],
+        'post_content' => sprintf(
+            "Name: %s %s\nEmail: %s\nPhone: %s\nCompany: %s\nService: %s\nMessage: %s",
+            $params['firstName'],
+            $params['lastName'],
+            $params['email'],
+            $params['phone'] ?? 'Not provided',
+            $params['company'] ?? 'Not provided',
+            $params['service'] ?? 'Not specified',
+            $params['message']
+        ),
+        'post_status' => 'private',
+        'post_type' => 'contact_submission',
+        'meta_input' => array(
+            'contact_first_name' => $params['firstName'],
+            'contact_last_name' => $params['lastName'],
+            'contact_email' => $params['email'],
+            'contact_phone' => $params['phone'] ?? '',
+            'contact_company' => $params['company'] ?? '',
+            'contact_service' => $params['service'] ?? '',
+            'contact_message' => $params['message'],
+            'contact_date' => current_time('mysql'),
+            'contact_ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        )
+    );
+    
+    // Insert the post
+    $post_id = wp_insert_post($post_data);
+    
+    if (is_wp_error($post_id)) {
+        return new WP_Error('submission_failed', 'Failed to save contact submission', array('status' => 500));
+    }
+    
+    // Send email notification (optional)
+    $admin_email = get_option('admin_email');
+    $site_name = get_bloginfo('name');
+    
+    $email_subject = sprintf('[%s] New Contact Form Submission', $site_name);
+    $email_body = sprintf(
+        "A new contact form submission has been received:\n\n" .
+        "Name: %s %s\n" .
+        "Email: %s\n" .
+        "Phone: %s\n" .
+        "Company: %s\n" .
+        "Service: %s\n" .
+        "Message: %s\n\n" .
+        "Submitted on: %s\n" .
+        "IP Address: %s",
+        $params['firstName'],
+        $params['lastName'],
+        $params['email'],
+        $params['phone'] ?? 'Not provided',
+        $params['company'] ?? 'Not provided',
+        $params['service'] ?? 'Not specified',
+        $params['message'],
+        current_time('mysql'),
+        $_SERVER['REMOTE_ADDR'] ?? 'Unknown'
+    );
+    
+    wp_mail($admin_email, $email_subject, $email_body);
+    
+    return array(
+        'success' => true,
+        'message' => 'Thank you for your message. We will get back to you soon!',
+        'submission_id' => $post_id
+    );
+}
+
+// Register custom post type for contact submissions
+function register_contact_submission_post_type() {
+    $labels = array(
+        'name' => 'Contact Submissions',
+        'singular_name' => 'Contact Submission',
+        'menu_name' => 'Contact Submissions',
+        'add_new' => 'Add New',
+        'add_new_item' => 'Add New Submission',
+        'edit_item' => 'Edit Submission',
+        'new_item' => 'New Submission',
+        'view_item' => 'View Submission',
+        'search_items' => 'Search Submissions',
+        'not_found' => 'No submissions found',
+        'not_found_in_trash' => 'No submissions found in trash',
+    );
+    
+    $args = array(
+        'labels' => $labels,
+        'public' => false,
+        'show_ui' => true,
+        'show_in_menu' => true,
+        'capability_type' => 'post',
+        'hierarchical' => false,
+        'rewrite' => false,
+        'supports' => array('title', 'editor'),
+        'menu_icon' => 'dashicons-email-alt',
+        'show_in_rest' => false,
+    );
+    
+    register_post_type('contact_submission', $args);
+}
+add_action('init', 'register_contact_submission_post_type');
+
+// Add customizer settings for contact page
+function add_contact_customizer_settings($wp_customize) {
+    // Contact Section
+    $wp_customize->add_section('contact_settings', array(
+        'title' => __('Contact Settings', 'generatepress-child'),
+        'priority' => 32,
+    ));
+
+    // Contact Title
+    $wp_customize->add_setting('contact_title', array(
+        'default' => 'Contact Us',
+        'sanitize_callback' => 'sanitize_text_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_title', array(
+        'label' => __('Contact Page Title', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'text',
+    ));
+
+    // Contact Subtitle
+    $wp_customize->add_setting('contact_subtitle', array(
+        'default' => 'Have questions, suggestions, or want to contribute? We\'d love to hear from you!',
+        'sanitize_callback' => 'sanitize_text_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_subtitle', array(
+        'label' => __('Contact Page Subtitle', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'text',
+    ));
+
+    // Contact Description
+    $wp_customize->add_setting('contact_description', array(
+        'default' => "We're here to help you with any questions about our blog content or if you'd like to contribute.",
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_description', array(
+        'label' => __('Contact Description', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'textarea',
+    ));
+
+    // Contact Address
+    $wp_customize->add_setting('contact_address', array(
+        'default' => 'Digital World',
+        'sanitize_callback' => 'sanitize_text_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_address', array(
+        'label' => __('Contact Address', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'text',
+    ));
+
+    // Contact Phone
+    $wp_customize->add_setting('contact_phone', array(
+        'default' => '+1 234 567 8910',
+        'sanitize_callback' => 'sanitize_text_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_phone', array(
+        'label' => __('Contact Phone', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'text',
+    ));
+
+    // Contact Email
+    $wp_customize->add_setting('contact_email', array(
+        'default' => 'hello@blog.com',
+        'sanitize_callback' => 'sanitize_email',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_email', array(
+        'label' => __('Contact Email', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'email',
+    ));
+
+    // Business Hours
+    $wp_customize->add_setting('contact_business_hours', array(
+        'default' => 'Monday - Friday: 9:00 AM - 6:00 PM\nSaturday: 10:00 AM - 2:00 PM',
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_business_hours', array(
+        'label' => __('Business Hours', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'textarea',
+    ));
+
+    // Form Title
+    $wp_customize->add_setting('contact_form_title', array(
+        'default' => 'Send us a Message',
+        'sanitize_callback' => 'sanitize_text_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_form_title', array(
+        'label' => __('Form Title', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'text',
+    ));
+
+    // Form Description
+    $wp_customize->add_setting('contact_form_description', array(
+        'default' => 'Fill out the form below and we\'ll get back to you as soon as possible.',
+        'sanitize_callback' => 'sanitize_textarea_field',
+        'transport' => 'postMessage',
+    ));
+
+    $wp_customize->add_control('contact_form_description', array(
+        'label' => __('Form Description', 'generatepress-child'),
+        'section' => 'contact_settings',
+        'type' => 'textarea',
+    ));
+}
+add_action('customize_register', 'add_contact_customizer_settings');
+
 
